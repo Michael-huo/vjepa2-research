@@ -49,15 +49,14 @@ The following are intentionally excluded from Git:
 
 - Downloaded model checkpoints and caches.
 
-- Generated experiment outputs under `outputs/`.
+- Generated experiment outputs under `research/outputs/`.
 
 - Raw `.npz` and `.npy` feature arrays.
 
-- Third-party sample videos.
+- Third-party sample videos under `research/assets/`.
 
 - Crash dumps and local backup files.
 
 
 
 The `main` branch preserves the initial working baseline. Later code reorganization is performed in dedicated research branches.
-

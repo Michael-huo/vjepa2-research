@@ -32,17 +32,14 @@ app/vjepa_droid_v4/local/
 configs/local
 
 
-# Local research artefacts and generated files
-
-/outputs/*
-
-!/outputs/.gitkeep
-
-/assets/sample_bowling.mp4
+# Local research assets and generated experiment artefacts
+/research/assets/*
+!/research/assets/.gitkeep
+/research/outputs/*
+!/research/outputs/.gitkeep
 
 /scripts/*.bak
 
 /core
 
 /core.*
-

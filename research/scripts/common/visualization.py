@@ -308,3 +308,185 @@ def save_completion_figure(
     fig.suptitle("Phase 1 completion: masked V-JEPA latent prediction and context ablation", fontsize=15)
     fig.savefig(output_path, dpi=180, bbox_inches="tight")
     plt.close(fig)
+
+
+def _imshow_no_axes(ax, image: np.ndarray, title: str) -> None:
+    ax.imshow(np.clip(image, 0.0, 1.0))
+    ax.set_title(title)
+    ax.axis("off")
+
+
+def _upsample_dense_rgb(pca_map: np.ndarray, output_size: int = CROP_SIZE) -> np.ndarray:
+    return cv2.resize(
+        pca_map.astype(np.float32),
+        (output_size, output_size),
+        interpolation=cv2.INTER_NEAREST,
+    )
+
+
+def _choose_display_indices(count: int, max_items: int = 4) -> list[int]:
+    if count <= max_items:
+        return list(range(count))
+    return sorted({int(round(i * (count - 1) / (max_items - 1))) for i in range(max_items)})
+
+
+def save_phase2_image_pca_summary(
+    output_path: Path,
+    *,
+    records: list[dict[str, Any]],
+) -> None:
+    fig = plt.figure(figsize=(14, 7), constrained_layout=True)
+    grid = fig.add_gridspec(2, len(records))
+    for col, record in enumerate(records):
+        _imshow_no_axes(
+            fig.add_subplot(grid[0, col]),
+            record["frame"],
+            f"{record['sequence']} | frame {record['frame_index']:05d}",
+        )
+        _imshow_no_axes(
+            fig.add_subplot(grid[1, col]),
+            _upsample_dense_rgb(record["pca_map"]),
+            "shared PCA RGB\nfeature visualization",
+        )
+    fig.suptitle("Phase 2 image dense PCA: first DAVIS frame per sequence", fontsize=15)
+    fig.savefig(output_path, dpi=170, bbox_inches="tight")
+    plt.close(fig)
+
+
+def save_phase2_video_pca_summary(
+    output_path: Path,
+    *,
+    records: list[dict[str, Any]],
+) -> None:
+    max_frames = max(len(record["frame_indices"]) for record in records)
+    fig = plt.figure(figsize=(max(16, max_frames * 2.2), len(records) * 4.2), constrained_layout=True)
+    grid = fig.add_gridspec(len(records) * 2, max_frames)
+    for row, record in enumerate(records):
+        frames = record["frames"]
+        pca_maps = record["pca_maps"]
+        for col, frame_index in enumerate(record["frame_indices"]):
+            _imshow_no_axes(
+                fig.add_subplot(grid[row * 2, col]),
+                frames[col],
+                f"{record['sequence']}\n{frame_index:05d}.jpg",
+            )
+            _imshow_no_axes(
+                fig.add_subplot(grid[row * 2 + 1, col]),
+                _upsample_dense_rgb(pca_maps[col]),
+                "sequence PCA",
+            )
+        for col in range(len(record["frame_indices"]), max_frames):
+            fig.add_subplot(grid[row * 2, col]).axis("off")
+            fig.add_subplot(grid[row * 2 + 1, col]).axis("off")
+    fig.suptitle(
+        "Phase 2 video dense PCA: one PCA fit per sequence, applied across sampled frames",
+        fontsize=15,
+    )
+    fig.savefig(output_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+
+
+def _mask_overlay(frame: np.ndarray, predicted: np.ndarray, gt: np.ndarray) -> np.ndarray:
+    overlay = frame.copy()
+    pred_color = np.zeros_like(frame)
+    pred_color[..., 0] = 1.0
+    gt_color = np.zeros_like(frame)
+    gt_color[..., 1] = 1.0
+    overlay = np.where(predicted[..., None], 0.62 * overlay + 0.38 * pred_color, overlay)
+    overlay = np.where(gt[..., None], 0.78 * overlay + 0.22 * gt_color, overlay)
+    return np.clip(overlay, 0.0, 1.0)
+
+
+def save_phase2_vos_summary(
+    output_path: Path,
+    *,
+    records: list[dict[str, Any]],
+) -> None:
+    display_count = 4
+    fig = plt.figure(figsize=(display_count * 4.0, len(records) * 4.4), constrained_layout=True)
+    grid = fig.add_gridspec(len(records), display_count)
+    for row, record in enumerate(records):
+        indices = _choose_display_indices(len(record["frame_indices"]), max_items=display_count)
+        metrics_by_frame = {
+            item["frame_index"]: item
+            for item in record["metrics"]["per_frame"]
+        }
+        for col, sample_index in enumerate(indices):
+            frame_index = int(record["frame_indices"][sample_index])
+            metric = metrics_by_frame[frame_index]
+            overlay = _mask_overlay(
+                record["frames"][sample_index],
+                record["predicted_masks"][sample_index],
+                record["gt_masks"][sample_index],
+            )
+            title = (
+                f"{record['sequence']} | {frame_index:05d}\n"
+                f"J={metric['sampled_crop_j']:.3f}, conf={metric['mean_confidence']:.3f}"
+            )
+            if metric["source_frame"]:
+                title += " | source"
+            _imshow_no_axes(fig.add_subplot(grid[row, col]), overlay, title)
+        for col in range(len(indices), display_count):
+            fig.add_subplot(grid[row, col]).axis("off")
+    fig.suptitle(
+        "Phase 2 VOS: red predicted foreground, green DAVIS crop GT, yellow overlap",
+        fontsize=15,
+    )
+    fig.savefig(output_path, dpi=160, bbox_inches="tight")
+    plt.close(fig)
+
+
+def save_phase2_overview(
+    output_path: Path,
+    *,
+    image_summary_path: Path,
+    video_summary_path: Path,
+    vos_summary_path: Path,
+    metrics: dict[str, Any],
+) -> None:
+    summary_images = [
+        ("Image dense PCA", plt.imread(image_summary_path)),
+        ("Video dense PCA", plt.imread(video_summary_path)),
+        ("VOS propagation", plt.imread(vos_summary_path)),
+    ]
+    fig = plt.figure(figsize=(16, 12), constrained_layout=True)
+    grid = fig.add_gridspec(3, 3, width_ratios=[1.2, 1.2, 0.9])
+    for row, (title, image) in enumerate(summary_images):
+        ax = fig.add_subplot(grid[row, :2])
+        ax.imshow(image)
+        ax.set_title(title)
+        ax.axis("off")
+
+    ax = fig.add_subplot(grid[:, 2])
+    ax.axis("off")
+    vos = metrics["vos_label_propagation"]
+    video = metrics["video_dense_pca"]
+    lines = [
+        "Phase 2 Dense DAVIS",
+        "",
+        f"Sequences: {', '.join(metrics['selected_sequences'])}",
+        f"Feature mode: {metrics['feature_mode']}",
+        "",
+        "Video PCA adjacent cosine:",
+    ]
+    for sequence, item in video["sequence_metrics"].items():
+        value = item["mean_adjacent_patch_cosine"]
+        lines.append(f"- {sequence}: {value:.4f}")
+    lines.extend(["", "VOS sampled crop J mean:"])
+    for sequence, item in vos["sequence_metrics"].items():
+        value = item["aggregate"]["sampled_crop_j_mean"]
+        lines.append(f"- {sequence}: {value:.4f}")
+    lines.extend(
+        [
+            "",
+            f"Mean VOS sampled crop J: {vos['mean_sampled_crop_j_mean']:.4f}",
+            "",
+            "Notes:",
+            "- PCA maps visualize dense features.",
+            "- VOS merges all DAVIS instances.",
+            "- Metrics are aligned-crop samples, not official DAVIS J&F.",
+        ]
+    )
+    ax.text(0.02, 0.98, "\n".join(lines), va="top", ha="left", fontsize=11)
+    fig.savefig(output_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)

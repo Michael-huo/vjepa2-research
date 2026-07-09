@@ -37,6 +37,9 @@ configs/local
 !/research/assets/.gitkeep
 /research/outputs/*
 !/research/outputs/.gitkeep
+/research/assets/phase2-dense/datasets/
+/research/assets/phase2-dense/prepared/
+/research/outputs/phase2-dense/
 
 /scripts/*.bak
 

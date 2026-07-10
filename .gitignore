@@ -40,6 +40,7 @@ configs/local
 /research/assets/phase2-dense/datasets/
 /research/assets/phase2-dense/prepared/
 /research/outputs/phase2-dense/
+/research/outputs/phase3-efficiency/
 
 /scripts/*.bak
 

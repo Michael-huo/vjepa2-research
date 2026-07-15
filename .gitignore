@@ -35,10 +35,10 @@ configs/local
 # Local research assets and generated experiment artefacts
 /research/assets/*
 !/research/assets/.gitkeep
+/research/assets/datasets/
+/research/assets/prepared/
 /research/outputs/*
 !/research/outputs/.gitkeep
-/research/assets/phase2-dense/datasets/
-/research/assets/phase2-dense/prepared/
 /research/outputs/phase2-dense/
 /research/outputs/phase3-efficiency/
 

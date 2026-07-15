@@ -19,11 +19,13 @@ The `lc` and `uc` suffixes are filesystem escaping markers only. They are not mo
 
 ## Data
 
-Phase 3 reuses the validated Phase 2 DAVIS dataset at:
+Phase 3 reuses the shared DAVIS dataset prepared with the authoritative command in [research/README.md](README.md#数据准备), at:
 
 ```text
-research/assets/phase2-dense/datasets/davis2017/DAVIS
+research/assets/datasets/davis2017/DAVIS
 ```
+
+The shared prepared manifest is `research/assets/prepared/davis2017/manifest.json`.
 
 It deterministically selects distinct frames round-robin from `dog`, `car-shadow`, and `parkour`, decodes them once, and reuses the same in-memory RGB pool for every model and benchmark. Disk access and JPEG decoding are outside benchmark timing.
 

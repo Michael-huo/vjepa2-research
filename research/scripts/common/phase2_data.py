@@ -4,31 +4,37 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from research.scripts.common.data_paths import (
+    DAVIS_MANIFEST_PATH,
+    DAVIS_ROOT,
+    REPO_ROOT,
+    RESEARCH_ROOT,
+)
 
 PHASE2_NAME = "phase2-dense"
 DATASET_NAME = "DAVIS 2017 TrainVal 480p"
 DEFAULT_SEQUENCES = ("dog", "car-shadow", "parkour")
 FRAME_SAMPLE_COUNT = 8
 
-RESEARCH_ROOT = Path(__file__).resolve().parents[2]
-REPO_ROOT = Path(__file__).resolve().parents[3]
-PHASE2_ASSETS_ROOT = RESEARCH_ROOT / "assets" / PHASE2_NAME
-DAVIS_ROOT = PHASE2_ASSETS_ROOT / "datasets" / "davis2017" / "DAVIS"
-PREPARED_MANIFEST_PATH = PHASE2_ASSETS_ROOT / "prepared" / "davis2017" / "manifest.json"
 PHASE2_OUTPUT_DIR = RESEARCH_ROOT / "outputs" / PHASE2_NAME
 PHASE2_STAGED_OUTPUT_DIR = RESEARCH_ROOT / "outputs" / f".{PHASE2_NAME}.tmp"
 
 DAVIS_DOWNLOAD_COMMAND = (
-    "mkdir -p research/assets/phase2-dense/datasets/davis2017 && cd "
-    "research/assets/phase2-dense/datasets/davis2017 && wget -c "
+    "mkdir -p research/assets/datasets/davis2017 && cd "
+    "research/assets/datasets/davis2017 && wget -c -O "
+    "DAVIS-2017-trainval-480p.zip "
     "https://data.vision.ee.ethz.ch/csergi/share/davis/DAVIS-2017-trainval-480p.zip && "
-    "{ [ -d DAVIS ] || unzip -q DAVIS-2017-trainval-480p.zip; } && "
+    "( { [ -d DAVIS/JPEGImages/480p ] && [ -d DAVIS/Annotations/480p ] && "
+    "[ -d DAVIS/ImageSets/2017 ]; } || unzip -q -o DAVIS-2017-trainval-480p.zip ) && "
     "test -d DAVIS/JPEGImages/480p && test -d DAVIS/Annotations/480p && "
+    "test -d DAVIS/ImageSets/2017 && "
     'echo "DAVIS 2017 ready: $(pwd)/DAVIS"'
 )
 
@@ -94,10 +100,25 @@ def _json_default(value: Any) -> Any:
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2, default=_json_default),
-        encoding="utf-8",
-    )
+    temporary_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            temporary_path = Path(handle.name)
+            json.dump(payload, handle, ensure_ascii=False, indent=2, default=_json_default)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary_path, path)
+    except Exception:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
+        raise
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -116,6 +137,22 @@ def _missing_davis_error(path: Path) -> FileNotFoundError:
 def _require_dir(path: Path) -> None:
     if not path.is_dir():
         raise _missing_davis_error(path)
+
+
+def _manifest_path(path: Path, *, davis_root: Path) -> str:
+    """Return a portable path for manifest records and fingerprints."""
+
+    resolved_path = Path(path).resolve()
+    try:
+        return resolved_path.relative_to(REPO_ROOT).as_posix()
+    except ValueError:
+        try:
+            relative_to_dataset = resolved_path.relative_to(davis_root.resolve())
+        except ValueError:
+            return Path(path).name
+        if relative_to_dataset == Path("."):
+            return "DAVIS"
+        return (Path("DAVIS") / relative_to_dataset).as_posix()
 
 
 def _file_stats(paths: tuple[Path, ...]) -> tuple[int, int]:
@@ -192,11 +229,11 @@ def inspect_davis_dataset(
     return {sequence: _scan_sequence(davis_root, sequence) for sequence in sequences}
 
 
-def sequence_manifest_record(sequence: DavisSequence) -> dict[str, Any]:
+def sequence_manifest_record(sequence: DavisSequence, *, davis_root: Path) -> dict[str, Any]:
     return {
         "name": sequence.name,
-        "image_dir": repo_relative(sequence.image_dir),
-        "mask_dir": repo_relative(sequence.mask_dir),
+        "image_dir": _manifest_path(sequence.image_dir, davis_root=davis_root),
+        "mask_dir": _manifest_path(sequence.mask_dir, davis_root=davis_root),
         "frame_count": sequence.frame_count,
         "mask_count": sequence.mask_count,
         "first_frame": sequence.first_frame,
@@ -216,8 +253,11 @@ def _structure_payload(
 ) -> dict[str, Any]:
     return {
         "dataset": DATASET_NAME,
-        "davis_root": repo_relative(davis_root),
-        "sequences": [sequence_manifest_record(sequences[name]) for name in sorted(sequences)],
+        "davis_root": _manifest_path(davis_root, davis_root=davis_root),
+        "sequences": [
+            sequence_manifest_record(sequences[name], davis_root=davis_root)
+            for name in sorted(sequences)
+        ],
     }
 
 
@@ -236,10 +276,12 @@ def build_prepared_manifest(
         "phase": PHASE2_NAME,
         "prepared_at": now_utc(),
         "dataset": DATASET_NAME,
-        "davis_root": repo_relative(davis_root),
-        "jpeg_root": repo_relative(davis_root / "JPEGImages" / "480p"),
-        "annotation_root": repo_relative(davis_root / "Annotations" / "480p"),
-        "imagesets_root": repo_relative(davis_root / "ImageSets"),
+        "davis_root": _manifest_path(davis_root, davis_root=davis_root),
+        "jpeg_root": _manifest_path(davis_root / "JPEGImages" / "480p", davis_root=davis_root),
+        "annotation_root": _manifest_path(
+            davis_root / "Annotations" / "480p", davis_root=davis_root
+        ),
+        "imagesets_root": _manifest_path(davis_root / "ImageSets", davis_root=davis_root),
         "selected_sequences": list(sequences),
         "structure": structure,
         "structure_fingerprint": structure_fingerprint(structure),
@@ -250,7 +292,7 @@ def build_prepared_manifest(
 def prepare_davis_dataset(
     *,
     davis_root: Path = DAVIS_ROOT,
-    manifest_path: Path = PREPARED_MANIFEST_PATH,
+    manifest_path: Path = DAVIS_MANIFEST_PATH,
     sequences: tuple[str, ...] = DEFAULT_SEQUENCES,
     force: bool = False,
 ) -> PreparedDavis:
@@ -262,7 +304,7 @@ def prepare_davis_dataset(
         existing = _read_json(manifest_path)
         same_fingerprint = existing.get("structure_fingerprint") == current_manifest["structure_fingerprint"]
         same_sequences = existing.get("selected_sequences") == list(sequences)
-        same_root = existing.get("davis_root") == repo_relative(davis_root)
+        same_root = existing.get("davis_root") == _manifest_path(davis_root, davis_root=davis_root)
         if same_fingerprint and same_sequences and same_root:
             skipped = True
             current_manifest = existing

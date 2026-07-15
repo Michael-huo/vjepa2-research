@@ -9,16 +9,12 @@ Phase 3 will evaluate input resolution choices, computational cost, memory usage
 
 ## Manual Dataset Step
 
-Run this one-line command from the repository root:
-
-```bash
-mkdir -p research/assets/phase2-dense/datasets/davis2017 && cd research/assets/phase2-dense/datasets/davis2017 && wget -c https://data.vision.ee.ethz.ch/csergi/share/davis/DAVIS-2017-trainval-480p.zip && { [ -d DAVIS ] || unzip -q DAVIS-2017-trainval-480p.zip; } && test -d DAVIS/JPEGImages/480p && test -d DAVIS/Annotations/480p && echo "DAVIS 2017 ready: $(pwd)/DAVIS"
-```
+Run the single authoritative DAVIS preparation command in [research/README.md](README.md#数据准备) from the repository root.
 
 Expected layout:
 
 ```text
-research/assets/phase2-dense/datasets/davis2017/DAVIS/
+research/assets/datasets/davis2017/DAVIS/
   JPEGImages/480p/
   Annotations/480p/
   ImageSets/
@@ -77,7 +73,7 @@ research/outputs/phase2-dense/
 The prepared dataset manifest is written to:
 
 ```text
-research/assets/phase2-dense/prepared/davis2017/manifest.json
+research/assets/prepared/davis2017/manifest.json
 ```
 
 The prepared manifest records paths and a lightweight DAVIS structure fingerprint only. It does not copy frames or masks.

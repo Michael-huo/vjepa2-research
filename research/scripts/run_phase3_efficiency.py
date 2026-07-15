@@ -10,10 +10,10 @@ if __package__ is None or __package__ == "":
 
 from research.scripts.common.phase2_data import (
     DEFAULT_SEQUENCES,
-    PREPARED_MANIFEST_PATH,
     prepare_davis_dataset,
     repo_relative,
 )
+from research.scripts.common.data_paths import DAVIS_MANIFEST_PATH
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -44,7 +44,7 @@ def run_prepare_only(*, force_prepare: bool) -> None:
     print("[0/N] Preparing DAVIS dataset")
     prepare_start = time.perf_counter()
     prepared = prepare_davis_dataset(
-        manifest_path=PREPARED_MANIFEST_PATH,
+        manifest_path=DAVIS_MANIFEST_PATH,
         sequences=DEFAULT_SEQUENCES,
         force=force_prepare,
     )

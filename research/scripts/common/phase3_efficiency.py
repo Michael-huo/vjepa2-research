@@ -28,17 +28,21 @@ from research.scripts.common.dense_pca import (
     project_pca_rgb,
     resize_center_crop_pil,
 )
+from research.scripts.common.data_paths import (
+    DAVIS_MANIFEST_PATH,
+    DAVIS_ROOT,
+    REPO_ROOT,
+    RESEARCH_ROOT,
+)
 from research.scripts.common.phase2_data import (
     DEFAULT_SEQUENCES,
     FRAME_SAMPLE_COUNT,
-    PREPARED_MANIFEST_PATH,
     PreparedDavis,
     prepare_davis_dataset,
     repo_relative,
     uniform_sample_indices,
 )
 from research.scripts.common.runtime import (
-    REPO_ROOT,
     collect_git_provenance,
     now_utc,
     runtime_environment,
@@ -61,7 +65,6 @@ from research.scripts.common.visualization import (
 
 
 PHASE3_NAME = "phase3-efficiency"
-RESEARCH_ROOT = Path(__file__).resolve().parents[2]
 PHASE3_OUTPUT_DIR = RESEARCH_ROOT / "outputs" / PHASE3_NAME
 PHASE3_STAGED_OUTPUT_DIR = RESEARCH_ROOT / "outputs" / f".{PHASE3_NAME}.tmp"
 
@@ -94,6 +97,8 @@ FIGURE_NAMES = (
 )
 PHASE3_SOURCE_RELATIVE_PATHS = (
     "research/scripts/run_phase3_efficiency.py",
+    "research/scripts/common/data_paths.py",
+    "research/scripts/common/phase2_data.py",
     "research/scripts/common/phase3_efficiency.py",
     "research/scripts/common/dense_pca.py",
     "research/scripts/common/vos.py",
@@ -311,7 +316,7 @@ def run_from_args(args: Any) -> None:
     print("[0/N] Preparing DAVIS dataset")
     prepare_start = time.perf_counter()
     prepared = prepare_davis_dataset(
-        manifest_path=PREPARED_MANIFEST_PATH,
+        manifest_path=DAVIS_MANIFEST_PATH,
         sequences=DEFAULT_SEQUENCES,
         force=bool(args.force_prepare),
     )

@@ -14,18 +14,17 @@ if __package__ is None or __package__ == "":
 import numpy as np
 
 from research.scripts.common.phase2_data import (
-    DAVIS_DOWNLOAD_COMMAND,
     DEFAULT_SEQUENCES,
     FRAME_SAMPLE_COUNT,
     PHASE2_NAME,
     PHASE2_OUTPUT_DIR,
     PHASE2_STAGED_OUTPUT_DIR,
-    PREPARED_MANIFEST_PATH,
     PreparedDavis,
     prepare_davis_dataset,
     repo_relative,
     uniform_sample_indices,
 )
+from research.scripts.common.data_paths import DAVIS_MANIFEST_PATH
 
 
 EXPECTED_OUTPUT_FILES = {
@@ -44,6 +43,7 @@ EXPECTED_OUTPUT_FILES = {
 
 PHASE2_SOURCE_RELATIVE_PATHS = (
     "research/scripts/run_phase2_dense.py",
+    "research/scripts/common/data_paths.py",
     "research/scripts/common/phase2_data.py",
     "research/scripts/common/dense_pca.py",
     "research/scripts/common/vos.py",
@@ -847,7 +847,7 @@ def main() -> None:
     prepare_start = time.perf_counter()
     try:
         prepared = prepare_davis_dataset(
-            manifest_path=PREPARED_MANIFEST_PATH,
+            manifest_path=DAVIS_MANIFEST_PATH,
             sequences=sequences,
             force=bool(args.force_prepare),
         )

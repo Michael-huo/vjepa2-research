@@ -17,6 +17,7 @@ from typing import Any
 import numpy as np
 import torch
 
+from research.scripts.common.data_paths import BOWLING_VIDEO_PATH, REPO_ROOT, RESEARCH_ROOT
 
 PHASE_NAME = "phase1-probe"
 VIDEO_STEM = "sample_bowling"
@@ -34,26 +35,25 @@ PHASE_SOURCE_RELATIVE_PATHS = (
     "research/scripts/__init__.py",
     "research/scripts/run_phase1_probe.py",
     "research/scripts/common/__init__.py",
+    "research/scripts/common/data_paths.py",
     "research/scripts/common/runtime.py",
     "research/scripts/common/video_models.py",
     "research/scripts/common/analysis.py",
     "research/scripts/common/visualization.py",
 )
 
-RESEARCH_ROOT = Path(__file__).resolve().parents[2]
-REPO_ROOT = Path(__file__).resolve().parents[3]
-DEFAULT_ASSETS_DIR = RESEARCH_ROOT / "assets"
 DEFAULT_OUTPUTS_DIR = RESEARCH_ROOT / "outputs"
-SAMPLE_VIDEO_PATH = DEFAULT_ASSETS_DIR / "sample_bowling.mp4"
 PHASE_OUTPUT_ROOT = DEFAULT_OUTPUTS_DIR / PHASE_NAME
 FINAL_OUTPUT_DIR = PHASE_OUTPUT_ROOT / VIDEO_STEM
 STAGED_OUTPUT_DIR = PHASE_OUTPUT_ROOT / f".{VIDEO_STEM}.tmp"
 
 DOWNLOAD_COMMAND = (
-    "mkdir -p research/assets\n"
-    "wget -c -O research/assets/sample_bowling.mp4 "
+    "mkdir -p research/assets/datasets/bowling && "
+    "wget -c -O research/assets/datasets/bowling/sample_bowling.mp4 "
     "https://huggingface.co/datasets/nateraw/kinetics-mini/resolve/main/val/"
-    "bowling/-WH-lxmGJVY_000005_000015.mp4"
+    "bowling/-WH-lxmGJVY_000005_000015.mp4 && "
+    "test -s research/assets/datasets/bowling/sample_bowling.mp4 && "
+    'echo "Bowling sample ready: research/assets/datasets/bowling/sample_bowling.mp4"'
 )
 
 
@@ -100,7 +100,7 @@ class CompletionConfig:
 @dataclass(frozen=True)
 class PhaseConfig:
     phase_name: str = PHASE_NAME
-    video_path: Path = SAMPLE_VIDEO_PATH
+    video_path: Path = BOWLING_VIDEO_PATH
     final_output_dir: Path = FINAL_OUTPUT_DIR
     staged_output_dir: Path = STAGED_OUTPUT_DIR
     representation: RepresentationConfig = RepresentationConfig()
@@ -112,7 +112,7 @@ def build_parser() -> argparse.ArgumentParser:
     return argparse.ArgumentParser(
         description=(
             "Run Phase 1 - V-JEPA 2.1 Capability Probe on the fixed "
-            "research/assets/sample_bowling.mp4 sample video."
+            "research/assets/datasets/bowling/sample_bowling.mp4 sample video."
         )
     )
 
@@ -132,7 +132,7 @@ def repo_relative_posix(path: Path) -> str:
         return path.as_posix()
 
 
-def require_sample_video(path: Path = SAMPLE_VIDEO_PATH) -> Path:
+def require_sample_video(path: Path = BOWLING_VIDEO_PATH) -> Path:
     if not path.is_file():
         raise FileNotFoundError(
             "Fixed Phase 1 input video was not found: "

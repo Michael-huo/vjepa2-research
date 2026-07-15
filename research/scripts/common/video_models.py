@@ -14,7 +14,7 @@ import torch
 import torch.nn.functional as F
 from decord import VideoReader, cpu
 
-from research.scripts.common.runtime import REPO_ROOT
+from research.scripts.common.data_paths import REPO_ROOT
 
 
 VJEPA21_VITB_MODEL = "vjepa2_1_vit_base_384"

@@ -19,3 +19,14 @@ PREPARED_ROOT = ASSETS_ROOT / "prepared"
 BOWLING_VIDEO_PATH = DATASETS_ROOT / "bowling" / "sample_bowling.mp4"
 DAVIS_ROOT = DATASETS_ROOT / "davis2017" / "DAVIS"
 DAVIS_MANIFEST_PATH = PREPARED_ROOT / "davis2017" / "manifest.json"
+TUM_RGBD_ROOT = (
+    DATASETS_ROOT
+    / "tum_rgbd"
+    / "rgbd_dataset_freiburg2_pioneer_slam"
+)
+TUM_RGBD_MANIFEST_PATH = (
+    PREPARED_ROOT
+    / "tum_rgbd"
+    / "rgbd_dataset_freiburg2_pioneer_slam"
+    / "manifest.json"
+)
